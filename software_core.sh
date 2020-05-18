@@ -35,3 +35,8 @@ sudo dnf -y install bison valgrind valgrind-devel flex
 sudo dnf -y install freecad
 sudo dnf -y install libtirpc-devel
 sudo dnf -y install boost-devel gmp-devel mpfr-devel
+sudo dnf -y install xournal gimp evolution
+sudo dnf -y install snapd vtk-devel
+sudo ln -s /var/lib/snapd/snap /snap
+sudo snap install acrordrdc
+pip3 install pandas --user
