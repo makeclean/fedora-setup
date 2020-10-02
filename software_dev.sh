@@ -61,6 +61,52 @@ function build_openmc() {
     cd ..
 }
 
+function _build_petsc_313() {
+    module purge
+    module load mpi/mpich-x86_64
+    cd $WORKDIR
+    if [ -d "$WORKDIR/petsc" ] ; then
+       return
+    fi
+    mkdir petsc
+    cd petsc
+    curl -L -O http://ftp.mcs.anl.gov/pub/petsc/release-snapshots/petsc-3.13.2.tar.gz
+    tar -xf petsc-3.13.2.tar.gz -C .
+    cd petsc-3.13.2
+    sed -i '55s#.*#      args.append(\x27-DTPL_PARMETIS_INCLUDE_DIRS=\"/home/adavis/opt/petsc/include/\"  \x27)#' /home/adavis/opt/petsc/petsc-3.13.2/config/BuildSystem/config/packages/SuperLU_DIST.py
+    ./configure \
+	--prefix=$WORKDIR/petsc \
+	--with-debugging=0 \
+	--with-ssl=0 \
+	--with-pic=1 \
+	--with-openmp=1 \
+	--with-mpi=1 \
+	--with-shared-libraries=1 \
+	--with-cxx-dialect=C++11 \
+        --with-64-bit-indices \
+    --with-fortran-bindings=0 \
+    --with-sowing=0 \
+    --download-hypre=1 \
+    --download-fblaslapack=1 \
+    --download-metis=1 \
+    --download-ptscotch=1 \
+    --download-parmetis=1 \
+    --download-superlu_dist=1 \
+    --download-scalapack=1 \
+    --download-mumps=1 \
+    --download-slepc=1 \
+    --with-mpi-dir=/usr/lib64/mpich/ \
+    PETSC_DIR=`pwd` PETSC_ARCH=linux-opt
+    # l55 of superlu_dist.py needs to be replaced with 
+    #     args.append('-DTPL_PARMETIS_INCLUDE_DIRS="/home/adavis/opt/petsc/petsc/include/"')
+    make PETSC_DIR=$WORKDIR/petsc/petsc-3.13.2 PETSC_ARCH=linux-opt all
+    make PETSC_DIR=$WORKDIR/petsc/petsc-3.13.2 PETSC_ARCH=linux-opt install
+    make PETSC_DIR=/home/adavis/opt/petsc PETSC_ARCH="" check
+    cd ..
+    cd ..
+    export PETSC_DIR=$WORKDIR/petsc
+}   
+
 function _build_petsc() {
     module purge
     module load mpi/mpich-x86_64
@@ -81,6 +127,7 @@ function _build_petsc() {
 	--with-openmp=1 \
 	--with-mpi=1 \
 	--with-shared-libraries=1 \
+        --with-64-bit-indices \
     --with-cxx-dialect=C++11 \
     --with-fortran-bindings=0 \
     --with-sowing=0 \
@@ -93,7 +140,7 @@ function _build_petsc() {
     --download-scalapack=1 \
     --download-mumps=1 \
     --download-slepc=1 \
-    --with-mpi-dir=/usr/lib64/mpich/ \
+#    --with-mpi-dir=/usr/lib64/mpich/ \
     PETSC_DIR=`pwd` PETSC_ARCH=linux-opt    
     make PETSC_DIR=$WORKDIR/petsc/petsc-3.11.4 PETSC_ARCH=linux-opt all
     make PETSC_DIR=$WORKDIR/petsc/petsc-3.11.4 PETSC_ARCH=linux-opt install
@@ -106,11 +153,12 @@ function _build_petsc() {
 function build_moose() {
     module purge
     module load mpi/mpich-x86_64
+    export MOOSE_JOBS=32
     cd $WORKDIR
     if [ -d "$WORKDIR/moose" ] ; then
        return
     fi
-    _build_petsc
+    _build_petsc_313
     git clone https://github.com/idaholab/moose
     cd moose
     git checkout master
@@ -121,6 +169,14 @@ function build_moose() {
     export F77=mpif77
     export FC=mpif90
     ./scripts/update_and_rebuild_libmesh.sh --with-mpi
+    cd framework
+    ./configure --with-derivative-size=180
+    make -j4
+    cd ..
+    cd modules
+#    ./configure --with-derivative-size=180
+    make -j4
+    cd ..
     cd test
     make -j 4
     ./run_tests -j 4
@@ -212,6 +268,28 @@ build_tetwild() {
     cd ..
 }
 
+build_geant4() {
+    cd $WORKDIR
+    if [ -d "$WORKDIR/geant4" ] ; then
+       return
+    fi
+    git clone https://github.com/Geant4/geant4
+    cd geant4
+    mkdir bld
+    cd bld
+    cmake .. -DCMAKE_INSTALL_PREFIX=$WORKDIR/geant4 \
+	  -DGEANT4_BUILD_MULTITHREADED=ON \
+	  -DGEANT4_INSTALL_DATA=ON \
+	  -DGEANT4_USE_GDML=ON \
+	  -DGEANT4_USE_OPENGL=ON \
+	  -DGEANT4_USE_QT=ON \
+	  -DGEANT4_USE_RAYTRACER_X11=ON    
+    make -j4
+    make install
+    cd ..
+    cd ..
+}
+
 if [ ! -d "$WORKDIR" ] ; then
     mkdir $WORKDIR
 fi
@@ -222,3 +300,4 @@ build_openmc
 build_moose
 build_mfem
 build_tetwild
+build_geant4

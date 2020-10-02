@@ -40,3 +40,5 @@ sudo dnf -y install snapd vtk-devel
 sudo ln -s /var/lib/snapd/snap /snap
 sudo snap install acrordrdc
 pip3 install pandas --user
+pip3 install pyqt5 --user
+sudo dnf -y install xerces-c-devel
