@@ -158,32 +158,31 @@ function build_moose() {
     if [ -d "$WORKDIR/moose" ] ; then
        return
     fi
-    _build_petsc_313
     git clone https://github.com/idaholab/moose
     cd moose
     git checkout master
-    export PETSC_DIR=$WORKDIR/petsc
+    unset PETSC_DIR PETSC_ARCH
     export CC=mpicc
     export CXX=mpicxx
     export F90=mpif90
     export F77=mpif77
     export FC=mpif90
+    if [ -d "$WORKDIR/petsc" ] ; then
+	export PETSC_DIR=$WORKDIR/petsc
+    else 
+	./scripts/update_and_rebuild_petsc.sh --download-mumps=0 --with-64-bit-indices=1 --prefix=$WORKDIR/petsc
+    fi
     ./scripts/update_and_rebuild_libmesh.sh --with-mpi
+    ./configure --with-derivative-size=180 --with-derivative-size=200 --with-ad-indexing-type=global
     cd framework
-    ./configure --with-derivative-size=180
-    make -j4
+    make -j32
     cd ..
     cd modules
-#    ./configure --with-derivative-size=180
-    make -j4
+    make -j32
     cd ..
     cd test
-    make -j 4
+    make -j32
     ./run_tests -j 4
-    cd ..
-    cd modules
-    make -j 4
-    cd ..
     cd ..
 }
 
